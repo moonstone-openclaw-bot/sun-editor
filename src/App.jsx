@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import './App.css'
 
 const STORAGE_KEY = 'sun-notes-draft'
@@ -8,12 +8,13 @@ const starterText = `# Untitled
 Write something beautiful.
 `
 
-function loadSavedText() {
-  if (typeof window === 'undefined') return starterText
+function loadSavedState() {
+  if (typeof window === 'undefined') return { text: starterText, savedAt: null }
   try {
-    return window.localStorage.getItem(STORAGE_KEY) ?? starterText
+    const text = window.localStorage.getItem(STORAGE_KEY) ?? starterText
+    return { text, savedAt: new Date() }
   } catch {
-    return starterText
+    return { text: starterText, savedAt: null }
   }
 }
 
@@ -52,13 +53,15 @@ function ToolbarButton({ children, onClick }) {
 }
 
 export default function App() {
-  const [text, setText] = useState(loadSavedText)
-  const [savedAt, setSavedAt] = useState(null)
+  const [{ text, savedAt }, setState] = useState(loadSavedState)
 
-  useEffect(() => {
-    saveText(text)
-    setSavedAt(new Date())
-  }, [text])
+  const setText = (value) => {
+    setState((current) => {
+      const nextText = typeof value === 'function' ? value(current.text) : value
+      saveText(nextText)
+      return { text: nextText, savedAt: new Date() }
+    })
+  }
 
   const stats = useMemo(() => ({
     chars: text.length,
