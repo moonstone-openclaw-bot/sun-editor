@@ -1,20 +1,28 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
-const STORAGE_KEY = 'sun-notes-draft'
+const STORAGE_KEY = 'sun-editor-draft'
 
-const starterText = `# Untitled
+const starterText = `# Sunrise Notes
 
-Write something beautiful.
+Watch the sun climb, then write about it.
 `
 
+const sunStops = [
+  { label: 'Night', angle: -120, color: 'rgba(72, 92, 180, 0.95)' },
+  { label: 'Dawn', angle: -60, color: 'rgba(255, 153, 94, 0.98)' },
+  { label: 'Morning', angle: 0, color: 'rgba(255, 206, 96, 1)' },
+  { label: 'Noon', angle: 60, color: 'rgba(255, 244, 170, 1)' },
+  { label: 'Evening', angle: 120, color: 'rgba(255, 148, 109, 0.98)' },
+]
+
 function loadSavedState() {
-  if (typeof window === 'undefined') return { text: starterText, savedAt: null }
+  if (typeof window === 'undefined') return { text: starterText, sunIndex: 2, savedAt: null }
   try {
     const text = window.localStorage.getItem(STORAGE_KEY) ?? starterText
-    return { text, savedAt: new Date() }
+    return { text, sunIndex: 2, savedAt: new Date() }
   } catch {
-    return { text: starterText, savedAt: null }
+    return { text: starterText, sunIndex: 2, savedAt: null }
   }
 }
 
@@ -53,13 +61,23 @@ function ToolbarButton({ children, onClick }) {
 }
 
 export default function App() {
-  const [{ text, savedAt }, setState] = useState(loadSavedState)
+  const [{ text, sunIndex, savedAt }, setState] = useState(loadSavedState)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setState((current) => ({
+        ...current,
+        sunIndex: (current.sunIndex + 1) % sunStops.length,
+      }))
+    }, 2400)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const setText = (value) => {
     setState((current) => {
       const nextText = typeof value === 'function' ? value(current.text) : value
       saveText(nextText)
-      return { text: nextText, savedAt: new Date() }
+      return { ...current, text: nextText, savedAt: new Date() }
     })
   }
 
@@ -69,24 +87,52 @@ export default function App() {
     lines: countLines(text),
   }), [text])
 
+  const sun = sunStops[sunIndex]
+
   const insertSnippet = (snippet) => {
     setText((current) => `${current}${current.endsWith('\n') ? '' : '\n'}${snippet}`)
   }
 
   return (
     <main className="app shell">
-      <div className="ambient ambient-one" />
-      <div className="ambient ambient-two" />
+      <div className="sky-glow sky-glow-left" />
+      <div className="sky-glow sky-glow-right" />
 
       <section className="editor-card">
         <header className="topbar">
           <div>
             <p className="eyebrow">Preview Routine</p>
-            <h1>Pretty Text Editor</h1>
-            <p className="subtitle">Simple, calm, and actually persistent.</p>
+            <h1>Sun Editor</h1>
+            <p className="subtitle">A calm editor with an animated sun that rises through the day.</p>
           </div>
           <div className="save-pill" aria-live="polite">{formatStatus(savedAt)}</div>
         </header>
+
+        <div className="sun-stage" aria-label={`Sun position: ${sun.label}`}>
+          <div className="sun-stage__track">
+            {sunStops.map((stop, index) => (
+              <span
+                key={stop.label}
+                className={`sun-stage__marker ${index === sunIndex ? 'is-active' : ''}`}
+                style={{ '--marker-angle': `${stop.angle}deg` }}
+                aria-hidden="true"
+              />
+            ))}
+            <div
+              className="sun-stage__sun"
+              style={{
+                '--sun-angle': `${sun.angle}deg`,
+                '--sun-color': sun.color,
+              }}
+            >
+              <span className="sun-stage__halo" />
+            </div>
+          </div>
+          <div className="sun-stage__label">
+            <strong>{sun.label}</strong>
+            <span>{Math.round(((sunIndex + 1) / sunStops.length) * 100)}% through the arc</span>
+          </div>
+        </div>
 
         <div className="toolbar">
           <ToolbarButton onClick={() => insertSnippet('—')}>Insert dash</ToolbarButton>
