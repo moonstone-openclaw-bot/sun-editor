@@ -39,9 +39,7 @@ jobs:
           rm -rf public-site
           mkdir -p public-site
           cp -r dist/* public-site/
-          cat > public-site/CNAME <<'EOF'
-sun-editor.preview.moonstone.works
-EOF
+          cp public/CNAME public-site/CNAME
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
